@@ -1,0 +1,160 @@
+import os
+import requests
+from dotenv import load_dotenv
+
+load_dotenv()
+
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+IG_ACCESS_TOKEN = os.getenv("IG_ACCESS_TOKEN")
+IG_USER_ID = os.getenv("IG_USER_ID")
+
+# ==============================
+# 1. Generate Image (OpenAI)
+# ==============================
+def generate_image(prompt):
+    url = "https://api.openai.com/v1/images/generations"
+    headers = {"Authorization": f"Bearer {OPENAI_API_KEY}"}
+    payload = {
+        "model": "dall-e-3",
+        "prompt": prompt,
+        "size": "1024x1024"
+    }
+    r = requests.post(url, json=payload, headers=headers)
+    try:
+        r.raise_for_status()
+    except requests.exceptions.HTTPError as e:
+        print(f"Error generating image: {e}")
+        print(f"Response: {r.text}")
+        raise e
+
+    image_url = r.json()["data"][0]["url"]
+    print("Generated Image:", image_url)
+    return image_url
+
+
+# ==============================
+# 2. Generate Video (OpenAI)
+# ==============================
+def generate_video(prompt):
+    # url = "https://api.openai.com/v1/videos"
+    # headers = {"Authorization": f"Bearer {OPENAI_API_KEY}"}
+    # payload = {
+    #     "model": "gpt-video-1",
+    #     "prompt": prompt,
+    #     "duration": 10
+    # }
+    # r = requests.post(url, json=payload, headers=headers)
+    # r.raise_for_status()
+
+    # video_url = r.json()["data"][0]["url"]
+    # print("Generated Video:", video_url)
+    # return video_url
+    print("Video generation skipped (model not available).")
+    return None
+
+
+# ==============================
+# 3. Download file
+# ==============================
+def download_file(url, filename):
+    r = requests.get(url)
+    r.raise_for_status()
+    with open(filename, "wb") as f:
+        f.write(r.content)
+    print("Downloaded:", filename)
+    return filename
+
+
+# ==============================
+# 4. Upload media to Instagram
+# ==============================
+def instagram_upload(image_url, caption, media_type="IMAGE"):
+    upload_url = f"https://graph.facebook.com/v21.0/{IG_USER_ID}/media"
+
+    data = {
+        "image_url": image_url,
+        "caption": caption,
+        "access_token": IG_ACCESS_TOKEN
+    }
+
+    if media_type == "VIDEO":
+        data["media_type"] = "VIDEO"
+        # For video, the parameter is likely 'video_url' or similar, but let's stick to image for now or check docs if needed.
+        # Assuming 'video_url' for video if we were to support it, but for now we are focusing on image.
+        # If media_type is VIDEO, we might need 'video_url' instead of 'image_url'. 
+        # However, since video is disabled, let's just keep it simple for image first.
+        pass 
+
+    r = requests.post(upload_url, data=data)
+    try:
+        r.raise_for_status()
+    except requests.exceptions.HTTPError as e:
+        print(f"Error uploading to Instagram: {e}")
+        print(f"Response: {r.text}")
+        raise e
+    creation_id = r.json()["id"]
+    print("Uploaded to IG Container:", creation_id)
+    return creation_id
+
+
+# ==============================
+# 5. Publish Instagram post
+# ==============================
+def instagram_publish(creation_id):
+    publish_url = f"https://graph.facebook.com/v21.0/{IG_USER_ID}/media_publish"
+
+    payload = {
+        "creation_id": creation_id,
+        "access_token": IG_ACCESS_TOKEN
+    }
+
+    import time
+    time.sleep(5) # Wait for container to be ready
+    r = requests.post(publish_url, data=payload)
+    try:
+        r.raise_for_status()
+    except requests.exceptions.HTTPError as e:
+        print(f"Error publishing to Instagram: {e}")
+        print(f"Response: {r.text}")
+        raise e
+
+    print("Published to Instagram:", r.json())
+    return r.json()
+
+
+# ==============================
+# 6. Main function
+# ==============================
+def create_and_post_avatar(image_prompt, video_prompt, caption):
+    # Generate
+    image_url = generate_image(image_prompt)
+    video_url = generate_video(video_prompt)
+
+    # Download
+    image_file = download_file(image_url, "avatar.png")
+    if video_url:
+        video_file = download_file(video_url, "avatar.mp4")
+
+    # Upload image
+    # Note: We pass the public image_url directly, not the local file
+    img_container = instagram_upload(image_url, caption, media_type="IMAGE")
+    instagram_publish(img_container)
+
+    # Upload video
+    if video_url:
+        # vid_container = instagram_upload(video_url, caption, media_type="VIDEO") # Update if enabling video
+        # instagram_publish(vid_container)
+        pass
+
+    print("Selesai! Gambar & Video diposting ke Instagram.")
+
+
+# ==============================
+# 7. RUN SCRIPT
+# ==============================
+if __name__ == "__main__":
+    create_and_post_avatar(
+        image_prompt="anime style, male programmer standing with his AI waifu",
+        video_prompt="AI avatar talking about coding tips in a futuristic room",
+        caption="Generated by AI Avatar Automation"
+    )
