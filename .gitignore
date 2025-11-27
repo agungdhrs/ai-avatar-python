@@ -1,5 +1,5 @@
 .env
-*.txt
+debug_output.txt
 avatar.png
 debug_output*
 .github
