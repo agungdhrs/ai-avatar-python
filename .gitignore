@@ -1,0 +1,6 @@
+.env
+*.txt
+avatar.png
+debug_output*
+.github
+.venv
