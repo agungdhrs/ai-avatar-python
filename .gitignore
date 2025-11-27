@@ -3,4 +3,4 @@
 avatar.png
 debug_output*
 .github
-.venv
+.venvgit filter-repo --path .env --invert-paths
