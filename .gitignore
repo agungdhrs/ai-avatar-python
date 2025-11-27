@@ -4,3 +4,4 @@ avatar.png
 debug_output*
 .github
 .venvgit filter-repo --path .env --invert-paths
+__pycache__
